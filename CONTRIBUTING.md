@@ -73,8 +73,9 @@ cargo +1.85.0 check --locked --lib
 ```
 
 未提交改动时，本地封包可使用 `cargo package --locked --allow-dirty`；发布前使用干净 checkout。
-CI 执行格式、测试、文档、Clippy、两个 Cortex-M 目标构建、依赖检查、封包和 MSRV 检查。
-具体驱动适配示例的验证方式见 [examples](examples/README.md)。这些软件检查不代表真实设备执行结果。
+CI 执行格式、测试、文档、Clippy、两个 Cortex-M 目标构建、依赖检查、封包和 MSRV 检查，
+并通过临时消费方编译、测试驱动适配模块。适配依赖只在临时消费方中声明，根库仍保持零依赖。
+具体检查命令和版本矩阵见 [examples](examples/README.md)。这些软件检查不代表真实设备执行结果。
 
 ## 提交 Pull Request
 

@@ -15,11 +15,15 @@
 该 crate 使用 Rust 2024 Edition，`#![no_std]`、无 `alloc`、零依赖，最低支持 Rust 1.85。
 它适合嵌入式固件、主机工具和已有 CAN 驱动之间的纯协议层。
 
+支持官方 ODrive `fw-v0.5.1` 及下文明确列出的 **MKS ODrive Mini 0.5.1 源码基线**。
+随包提供 Embassy STM32、`embedded-can`／bxCAN、Linux SocketCAN 适配模块，详见
+[框架兼容矩阵](https://github.com/MRNIU/odrive-can-protocol/blob/main/examples/README.md#框架兼容矩阵)。
+
 ## 安装
 
 ```toml
 [dependencies]
-odrive-can-protocol = "0.1"
+odrive-can-protocol = "0.1.1"
 ```
 
 也可以在同一工作区使用本地路径：
@@ -127,6 +131,7 @@ sequenceDiagram
 | 协议版本 | 模块 | 支持状态 |
 |---|---|---|
 | ODrive `fw-v0.5.1` | `fw_v0_5_1` | 已实现并核验全部有效消息，支持标准 Classic CAN |
+| MKS ODrive Mini `ODriveMINI-fw-v0.5.1-20250326` | `fw_v0_5_1` | CANSimple 源码与官方基线一致，复用相同 API；见下方兼容说明 |
 | 其他固件版本 | — | 尚未实现，欢迎按贡献指南补充支持 |
 
 这个基线完整实现 23 个有效命令号：14 个主机写命令、8 个 RTR 查询、Heartbeat 和 8 种
@@ -186,12 +191,29 @@ sequenceDiagram
 | 错误与 Vbus 回复 | 解码要求 DLC 8；后 4 字节编码时清零、解码时忽略。 |
 | 帧校验 | 本库严格检查表中长度与帧形态；固件接收更宽松，不能据此推断设备会拒绝错误帧。 |
 
-[MKS ODrive Mini 发布源码包](https://github.com/makerbase-motor/MKS-ODrive/blob/e15782976ae93d42b1f0648ceec96503141a343b/Firmware/MKS%20ODrive%20MINI/ODriveMINI-fw-v0.5.1-20250326.rar)
-（revision `e15782976ae93d42b1f0648ceec96503141a343b`）中的 `can-protocol.md`、`can_simple.cpp`
-和 `can_helpers.hpp` 与官方基线逐字节一致。此结论仅适用于该源码包，不证明设备烧录版本或实板表现。
-
 参考项目 [raoz/odrive-messages](https://github.com/raoz/odrive-messages/tree/37990cb157f667cdd0ddb441f907066e4126fbef)
 使用较新协议，仅作设计参考，不作为当前版本的 wire 格式依据。
+
+### MKS ODrive Mini 兼容说明
+
+**MKS ODrive Mini 使用以下已核对的 0.5.1 CANSimple 固件时，直接使用 `fw_v0_5_1`。**
+不需要单独 feature、厂家分支或单位转换层。上方全部命令、查询和回复均适用同一协议布局。
+
+核对对象为 Makerbase 的
+[ODriveMINI-fw-v0.5.1-20250326.rar](https://github.com/makerbase-motor/MKS-ODrive/blob/e15782976ae93d42b1f0648ceec96503141a343b/Firmware/MKS%20ODrive%20MINI/ODriveMINI-fw-v0.5.1-20250326.rar)，
+仓库 revision `e15782976ae93d42b1f0648ceec96503141a343b`。2026-09-15 重新核对以下文件，
+与上述官方 `fw-v0.5.1` revision 逐字节一致：
+
+| 源码包内文件 | SHA-256（与官方文件相同） |
+|---|---|
+| `docs/can-protocol.md` | `1d6dcd3798df071313a667bd2a076949d73fe40cb2c18c0f7644faaf6b658fb5` |
+| `Firmware/communication/can_simple.cpp` | `b2d0a8f78605fe3bc0e411bd3649bbf562d0db4eec39fd1dccc98998436741bd` |
+| `Firmware/communication/can_helpers.hpp` | `b171f27d478493a6ea714a20cd86bd8d625312f886f5a0f671044c4e38169c4b` |
+
+接入时由应用确认设备实际运行的固件基线、CANSimple 模式、节点号与总线速率；查询需要驱动
+支持 RTR。板卡名称、商品名称和 USB 版本字符串均不足以确定实际协议版本，其他日期、修改版
+或未知固件须另行核对。本说明证明指定源码的 CANSimple 兼容性，不代表烧录验证、实板通信、
+电机配置或运动验证。本 crate 也不提供 USB／UART、刷写或设备初始化。
 
 ## 开发与贡献
 
@@ -204,7 +226,13 @@ cargo test --doc
 cargo clippy --all-targets -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 cargo +1.85.0 check --lib
+python3 examples/check.py embedded_can
+python3 examples/check.py embassy
+python3 examples/check.py socketcan
 ```
+
+适配测试使用 Python 3 和 Rust stable；SocketCAN 检查需要 Linux。交叉编译、芯片选择和
+适配依赖的版本要求见 [examples](https://github.com/MRNIU/odrive-can-protocol/tree/main/examples)。
 
 贡献流程、协议变更要求和验证范围见 [CONTRIBUTING.md](https://github.com/MRNIU/odrive-can-protocol/blob/main/CONTRIBUTING.md)。协议变更必须以
 固定版本源码核对，并同步更新本 README 的版本支持和证据说明。
