@@ -33,48 +33,24 @@ Rust 中的 crate 名为 `odrive_can_protocol`。完整 API 见 [rustdoc](https:
 
 ## 快速开始
 
-下面的例子只做协议转换：节点号、帧收发、命令是否被设备执行及后续状态判断均由应用负责。
+编码一条速度命令；成功仅表示协议转换完成：
 
 ```rust
-use odrive_can_protocol::fw_v0_5_1::{
-    self as protocol, AxisState, Command, Message, NodeId, Query, Response,
+use odrive_can_protocol::fw_v0_5_1::{Command, Message, NodeId, encode};
+
+let node = NodeId::new(1).unwrap();
+let command = Command::SetInputVel {
+    velocity: -2.5,  // turn/s
+    torque_ff: 0.25, // N·m
 };
-use odrive_can_protocol::{FrameId, FramePayload, FrameRef};
+let frame = encode(node, Message::Command(command)).unwrap();
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let node = NodeId::new(1)?;
-    let tx = protocol::encode(
-        node,
-        Message::Command(Command::SetInputVel {
-            velocity: -2.5, // turn/s
-            torque_ff: 0.25, // N·m
-        }),
-    )?;
-    assert_eq!(tx.id(), 0x02d);
-    assert_eq!(tx.data(), &[0x00, 0x00, 0x20, 0xc0, 0x00, 0x00, 0x80, 0x3e]);
-
-    let query = protocol::encode(node, Message::Request(Query::EncoderEstimates))?;
-    assert!(query.is_remote());
-    assert_eq!(query.dlc(), 8);
-    assert!(query.data().is_empty()); // RTR 无数据；DLC 表示请求长度
-
-    let bytes = [0x01, 0x00, 0x00, 0x80, 0x08, 0x00, 0x01, 0x00];
-    let rx = FrameRef {
-        id: FrameId::Standard(0x021),
-        payload: FramePayload::Data(&bytes),
-    };
-    assert_eq!(
-        protocol::decode(node, rx)?,
-        Some(Message::Response(Response::Heartbeat {
-            axis_error: 0x8000_0001,
-            axis_state: AxisState(0x0001_0008),
-        }))
-    );
-    Ok(())
-}
+assert_eq!(frame.id(), 0x02d);
+// frame.data() 提供交给 CAN 驱动的有效载荷。
 ```
 
-仓库中可直接运行相同语义的示例：
+完整编码、RTR 查询和 Heartbeat 解码见
+[encode_decode.rs](https://github.com/MRNIU/odrive-can-protocol/blob/main/examples/encode_decode.rs)：
 
 ```sh
 cargo run --example encode_decode
@@ -200,44 +176,22 @@ sequenceDiagram
 
 ### 基线证据与实现差异
 
-官方 `fw-v0.5.1` tag 固定为 revision
-[`7831d795235e5ef8535e4b46621a0721b458ec8f`](https://github.com/odriverobotics/ODrive/tree/7831d795235e5ef8535e4b46621a0721b458ec8f)。
-核对了该 revision 的[协议文档](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/docs/can-protocol.md)、[CANSimple 实现](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_simple.cpp)、[命令枚举](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_simple.hpp)、[帧字段辅助代码](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_helpers.hpp)、[Classic CAN 收发实现](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/interface_can.cpp)
-和 [Sensorless 单位定义](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/MotorControl/sensorless_estimator.hpp)。
+基线为官方 `fw-v0.5.1`，revision `7831d795235e5ef8535e4b46621a0721b458ec8f`；
+已交叉核对[协议文档](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/docs/can-protocol.md)
+与[固件实现](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_simple.cpp)。
 
-| 证据发现 | 本库合同 |
+| 项目 | 兼容性说明 |
 |---|---|
-| Heartbeat 是两个完整 `u32`。 | 保留完整状态和所有未知 error bits；只有精确值才可与已知状态常量比较。 |
-| 文档定义的状态请求字段是 `u32`，回调实际只读低 16 bit。 | 编码完整 4 字节，但高位非零的值不表示设备会按完整 `u32` 执行。 |
-| 三种错误回复和 Vbus 回复都实际发送 DLC 8。 | 后 4 字节由编码回复清零，解码忽略其值但要求实际 DLC 8。 |
-| 固件对某些接收帧的长度或 RTR 很宽松。 | 本库按表严格检查 0／4／8 字节及帧形态；这不是对设备拒绝行为的声明。 |
-| 部分 Get 行的文档方向不精确，Get Vbus 也缺查询星号。 | 以源码为准：由主机 RTR 发起，轴以数据帧回复。 |
-| Sensorless 发送的是 `pll_pos_`。 | Sensorless 位置为 rad，不沿用 Encoder Estimates 的 turn。 |
+| 状态请求 | 按文档编码完整 `u32`，但该固件仅读取低 16 bit。 |
+| 错误与 Vbus 回复 | 解码要求 DLC 8；后 4 字节编码时清零、解码时忽略。 |
+| 帧校验 | 本库严格检查表中长度与帧形态；固件接收更宽松，不能据此推断设备会拒绝错误帧。 |
 
-<details>
-<summary>MKS ODrive Mini 的发布源码交叉核对</summary>
+[MKS ODrive Mini 发布源码包](https://github.com/makerbase-motor/MKS-ODrive/blob/e15782976ae93d42b1f0648ceec96503141a343b/Firmware/MKS%20ODrive%20MINI/ODriveMINI-fw-v0.5.1-20250326.rar)
+（revision `e15782976ae93d42b1f0648ceec96503141a343b`）中的 `can-protocol.md`、`can_simple.cpp`
+和 `can_helpers.hpp` 与官方基线逐字节一致。此结论仅适用于该源码包，不证明设备烧录版本或实板表现。
 
-核对的发布包为
-[ODriveMINI-fw-v0.5.1-20250326](https://github.com/makerbase-motor/MKS-ODrive/blob/e15782976ae93d42b1f0648ceec96503141a343b/Firmware/MKS%20ODrive%20MINI/ODriveMINI-fw-v0.5.1-20250326.rar)，
-厂家仓库 revision 为 `e15782976ae93d42b1f0648ceec96503141a343b`，RAR SHA-256 为
-`a8cbc2af68deccdadad150e20d8337cc7a1ae430f8ccb441625315e2f04d2430`。解压后下列文件与
-上述官方 revision 的同路径文件逐字节一致：
-
-| 文件 | SHA-256 |
-|---|---|
-| `docs/can-protocol.md` | `1d6dcd3798df071313a667bd2a076949d73fe40cb2c18c0f7644faaf6b658fb5` |
-| `Firmware/communication/can_simple.cpp` | `b2d0a8f78605fe3bc0e411bd3649bbf562d0db4eec39fd1dccc98998436741bd` |
-| `Firmware/communication/can_helpers.hpp` | `b171f27d478493a6ea714a20cd86bd8d625312f886f5a0f671044c4e38169c4b` |
-
-这只证明该发布源码包与基线的协议文件一致，不确认任何具体设备刷入的二进制，也不构成
-实板、总线或运动验证。它不能推及其他 MKS 版本、厂商修改版或未来版本。
-</details>
-
-只读参考项目
-[`raoz/odrive-messages` at `37990cb157f667cdd0ddb441f907066e4126fbef`](https://github.com/raoz/odrive-messages/tree/37990cb157f667cdd0ddb441f907066e4126fbef)
-属于更新协议：其中 `0x00` 是 GetVersion，`0x03` 是复合错误，`0x04/0x05` 是 SDO，`0x15`
-是温度，`0x17` 含母线电流，Heartbeat 布局也不同。因此仅借鉴纯协议层职责分离，不采用其
-wire 格式或代码。
+参考项目 [raoz/odrive-messages](https://github.com/raoz/odrive-messages/tree/37990cb157f667cdd0ddb441f907066e4126fbef)
+使用较新协议，仅作设计参考，不作为当前版本的 wire 格式依据。
 
 ## 开发与贡献
 
