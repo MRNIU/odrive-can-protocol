@@ -1,5 +1,5 @@
 # Copyright The odrive-can-protocol Contributors
-# 检查格式、协议测试、文档、无操作系统目标、依赖和本地打包，不执行发布。
+# 检查默认协议库、可选帧转换、文档和嵌入式构建，不执行发布。
 
 name: CI
 
@@ -20,28 +20,28 @@ jobs:
           components: rustfmt, clippy
           targets: thumbv7em-none-eabihf, thumbv6m-none-eabi
       - run: cargo fmt --check
-      - run: cargo test --locked --all-targets
-      - run: cargo test --locked --doc
-      - run: cargo clippy --locked --all-targets -- -D warnings
-      - run: cargo doc --locked --no-deps
+      - run: cargo test --locked --all-targets --all-features --features embassy-stm32/stm32h723vg
+      - run: cargo test --locked --doc --all-features --features embassy-stm32/stm32h723vg
+      - run: cargo clippy --locked --all-targets --all-features --features embassy-stm32/stm32h723vg -- -D warnings
+      - run: cargo doc --locked --no-deps --all-features --features embassy-stm32/stm32h723vg
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo build --locked --lib --target thumbv7em-none-eabihf
       - run: cargo build --locked --lib --target thumbv6m-none-eabi
-      - name: Check dependencies and features
-        run: |
-          cargo tree --locked --edges features
-          cargo metadata --locked --format-version 1 > /tmp/odrive-can-protocol-metadata.json
-          python3 - <<'PY'
-          import json
-          with open('/tmp/odrive-can-protocol-metadata.json') as source:
-              metadata = json.load(source)
-          assert len(metadata['packages']) == 1, 'expected zero dependencies'
-          package = metadata['packages'][0]
-          assert package['dependencies'] == [], 'expected zero dependencies'
-          assert package['features'] == {}, 'expected no feature switches'
-          PY
+      - run: cargo tree --locked --edges normal
       - run: cargo package --locked
+
+  embedded:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chip: [stm32h723vg, stm32f405rg]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+      - run: cargo check --locked --lib --target thumbv7em-none-eabihf --features embassy-stm32,embassy-stm32/${{ matrix.chip }}
 
   msrv:
     runs-on: ubuntu-latest
@@ -49,27 +49,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.85.0
       - run: cargo check --locked --lib
-
-  adapters:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        adapter: [embedded_can, embassy, socketcan]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - run: python3 examples/check.py ${{ matrix.adapter }}
-
-  adapters-no-std:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-          targets: thumbv7em-none-eabihf
-      - run: python3 examples/check.py embedded_can --target thumbv7em-none-eabihf
-      - run: python3 examples/check.py embassy --target thumbv7em-none-eabihf --chip stm32h723vg
-      - run: python3 examples/check.py embassy --target thumbv7em-none-eabihf --chip stm32f405rg
+      - run: cargo check --locked --lib --features embedded-can

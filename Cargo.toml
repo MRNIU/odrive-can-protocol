@@ -1,5 +1,5 @@
 # Copyright The odrive-can-protocol Contributors
-# 定义通用协议库的包元数据、发布文件范围和编译检查，保持零依赖。
+# 定义包元数据及可选帧适配依赖，默认协议库保持零依赖。
 
 [package]
 name = "odrive-can-protocol"
@@ -15,6 +15,25 @@ readme = "README.md"
 keywords = ["odrive", "can", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std", "encoding"]
 include = ["src/**", "tests/**", "examples/**", "README.md", "CONTRIBUTING.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
+
+[features]
+default = []
+embedded-can = ["dep:embedded-can"]
+embassy-stm32 = ["embedded-can", "dep:embassy-stm32"]
+socketcan = ["embedded-can", "dep:socketcan"]
+
+[dependencies]
+embedded-can = { version = "0.4.1", optional = true }
+embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+socketcan = { version = "4.0.0", default-features = false, optional = true }
+
+[dev-dependencies]
+bxcan = "0.8.0"
+
+[package.metadata.docs.rs]
+features = ["embedded-can", "socketcan", "embassy-stm32", "embassy-stm32/stm32h723vg"]
 
 [lints.rust]
 unsafe_code = "forbid"
