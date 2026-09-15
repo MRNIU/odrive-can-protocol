@@ -1,0 +1,22 @@
+# Copyright The odrive-can Contributors
+# 定义通用协议库的包元数据、发布文件范围和编译检查，保持零依赖。
+
+[package]
+name = "odrive-can"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Hardware-independent, no_std ODrive CANSimple fw-v0.5.1 protocol codec"
+repository = "https://github.com/MRNIU/odrive-can"
+license = "MIT"
+readme = "README.md"
+keywords = ["odrive", "can", "embedded", "no-std"]
+categories = ["embedded", "hardware-support", "no-std", "encoding"]
+include = ["src/**", "tests/**", "examples/**", "docs/**", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"

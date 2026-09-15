@@ -1,0 +1,4 @@
+# Copyright The odrive-can Contributors
+# 排除本地编译、文档和打包产物，源码与协议证据保留在版本控制中。
+
+/target/

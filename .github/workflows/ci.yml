@@ -1,0 +1,51 @@
+# Copyright The odrive-can Contributors
+# 检查格式、协议测试、文档、无操作系统目标、依赖和本地打包，不执行发布。
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  software:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: thumbv7em-none-eabihf, thumbv6m-none-eabi
+      - run: cargo fmt --check
+      - run: cargo test --locked --all-targets
+      - run: cargo test --locked --doc
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo doc --locked --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - run: cargo build --locked --lib --target thumbv7em-none-eabihf
+      - run: cargo build --locked --lib --target thumbv6m-none-eabi
+      - name: Check dependencies and features
+        run: |
+          cargo tree --locked --edges features
+          cargo metadata --locked --format-version 1 > /tmp/odrive-can-metadata.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/odrive-can-metadata.json') as source:
+              metadata = json.load(source)
+          assert len(metadata['packages']) == 1, 'expected zero dependencies'
+          package = metadata['packages'][0]
+          assert package['dependencies'] == [], 'expected zero dependencies'
+          assert package['features'] == {}, 'expected no feature switches'
+          PY
+      - run: cargo package --locked
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - run: cargo check --locked --lib
