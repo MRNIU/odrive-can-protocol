@@ -3,7 +3,7 @@
 
 # 贡献指南
 
-欢迎提交 [Issue](https://github.com/MRNIU/odrive-can-protocol/issues) 和 [Pull Request](https://github.com/MRNIU/odrive-can-protocol/pulls)。请提供可复现的最小代码、crate 与 Rust 版本；协议问题还应附固件 revision、CAN ID、帧类型、DLC 与有效载荷。
+欢迎提交 [Pull Request](https://github.com/MRNIU/odrive-can-protocol/pulls)。请提供可复现的最小代码、crate 与 Rust 版本；协议问题还应附固件 revision、CAN ID、帧类型、DLC 与有效载荷。
 
 ## 维护边界
 

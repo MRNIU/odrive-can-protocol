@@ -17,7 +17,7 @@ cargo run --example encode_decode
 
 ```toml
 [dependencies]
-odrive-can-protocol = { version = "0.1.1", features = ["embedded-can"] }
+odrive-can-protocol = { version = "0.1.2", features = ["embedded-can"] }
 embedded-can = "0.4"
 bxcan = "0.8"
 ```
@@ -35,7 +35,7 @@ let view = FrameRef::from_classic_embedded_can(&native)?;
 
 ```toml
 [dependencies]
-odrive-can-protocol = { version = "0.1.1", features = ["embassy-stm32"] }
+odrive-can-protocol = { version = "0.1.2", features = ["embassy-stm32"] }
 embassy-stm32 = { version = "0.6", features = ["stm32h723vg"] }
 ```
 
@@ -55,7 +55,7 @@ let view = FrameRef::try_from(&native)?;
 
 ```toml
 [dependencies]
-odrive-can-protocol = { version = "0.1.1", features = ["socketcan"] }
+odrive-can-protocol = { version = "0.1.2", features = ["socketcan"] }
 socketcan = "4"
 ```
 

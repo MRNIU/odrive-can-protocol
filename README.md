@@ -15,7 +15,7 @@
 
 ```toml
 [dependencies]
-odrive-can-protocol = "0.1.1"
+odrive-can-protocol = "0.1.2"
 ```
 
 Rust 中的 crate 名为 `odrive_can_protocol`。完整 API 见 [rustdoc](https://docs.rs/odrive-can-protocol)。
