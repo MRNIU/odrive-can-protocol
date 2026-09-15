@@ -2,7 +2,7 @@
 
 # 示例
 
-这里的示例只演示 `odrive-can` 的协议值与帧表示之间的转换；不连接设备、不发送 CAN，
+这里的示例只演示 `odrive-can-protocol` 的协议值与帧表示之间的转换；不连接设备、不发送 CAN，
 也不包含任务、时序或控制流程。
 
 ## 独立编码与解码
@@ -26,12 +26,11 @@ mod odrive_can_adapter;
 ```
 
 应用的 `Cargo.toml` 需要自行声明 HAL 依赖。以下为 STM32H723 的示例，
-`stm32h723vg` 只选择消费方的芯片；其他芯片应替换为应用实际需要的 Embassy feature。`odrive-can`
-的路径也应按应用与本库的相对位置调整：
+`stm32h723vg` 只选择消费方的芯片；其他芯片应替换为应用实际需要的 Embassy feature：
 
 ```toml
 [dependencies]
-odrive-can = { path = "../odrive-can" }
+odrive-can-protocol = "0.1"
 embassy-stm32 = { version = "=0.6.0", features = ["stm32h723vg"] }
 embedded-can = "=0.4.1"
 ```

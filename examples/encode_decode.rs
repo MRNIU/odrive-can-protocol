@@ -4,10 +4,10 @@
 //!
 //! 运行 `cargo run --example encode_decode`，查看显式节点和原始字段如何交接。
 
-use odrive_can::fw_v0_5_1::{
+use odrive_can_protocol::fw_v0_5_1::{
     self as protocol, AxisState, Command, Message, NodeId, Query, Response,
 };
-use odrive_can::{FrameId, FramePayload, FrameRef};
+use odrive_can_protocol::{FrameId, FramePayload, FrameRef};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let node = NodeId::new(1)?;

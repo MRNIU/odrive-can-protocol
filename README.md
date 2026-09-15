@@ -1,94 +1,122 @@
 <!-- Copyright The odrive-can Contributors -->
+<!-- 本文件介绍项目使用、协议支持、源码依据与贡献入口。 -->
 
-# odrive-can
+# odrive-can-protocol
 
-硬件无关的 ODrive CANSimple 编解码 Rust 库，首版固定支持官方 **fw-v0.5.1**。
-单个 library crate，Rust 2024 Edition，`#![no_std]`，零依赖、无 `alloc`、无动态内存分配。
+[![CI](https://github.com/MRNIU/odrive-can/actions/workflows/ci.yml/badge.svg)](https://github.com/MRNIU/odrive-can/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/odrive-can-protocol.svg)](https://crates.io/crates/odrive-can-protocol)
+[![docs.rs](https://docs.rs/odrive-can-protocol/badge.svg)](https://docs.rs/odrive-can-protocol)
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/MRNIU/odrive-can/blob/main/LICENSE)
+[![MSRV](https://img.shields.io/badge/MSRV-1.85-blue.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/)
 
-## 职责与范围
+`odrive-can-protocol` 是硬件无关的 ODrive CANSimple 编解码库。它把显式协议值转换为 Classic CAN
+帧，或从借用的帧视图还原协议值；不访问 CAN 外设，也不替应用决定时序或控制策略。
 
-本库把显式协议值编码为标准 Classic CAN 帧，或从借用的帧视图解出消息。
-完整覆盖 fw-v0.5.1 的 **23 个有效命令号**：14 个写命令、8 个 RTR 查询，以及 Heartbeat
-和 8 类查询回复。包含轴状态、控制模式、位置／速度／转矩输入、限值与轨迹参数、
-Anticogging、重启、清错和错误／编码器／电流／Sensorless／母线电压读取；
-完整字段与长度见 [消息表](docs/protocol.md#完整消息表)。
+该 crate 使用 Rust 2024 Edition，`#![no_std]`、无 `alloc`、零依赖，最低支持 Rust 1.85。
+它适合嵌入式固件、主机工具和已有 CAN 驱动之间的纯协议层。
 
-`0x08 Set Axis Startup Config` 在官方版本中未实现，明确返回 `UnsupportedCommand`；
-CANopen 保留项不属于本库支持的消息。扩展 ID 与 CAN FD 显式报错。不会根据长度猜测版本，
-也不混入更新版的 Heartbeat、温度、电流或广播语义。
-
-库不持有外设、不收发 CAN、不维护任务、队列、计时、重试或心跳新鲜度，也不执行
-rpm／mm/s 换算、限幅、控制许可、停止或自动恢复。
-
-**编码成功只表示协议转换完成。** 本地发送、设备是否执行、设备状态和运动结果须由
-应用分别判断；Heartbeat 是状态数据，不是某条命令的 ACK。
-
-## 快速使用
-
-尚未发布到 crates.io。当前可直接以本地路径引用工作区成果：
+## 安装
 
 ```toml
 [dependencies]
-odrive-can = { path = "../odrive-can" }
+odrive-can-protocol = "0.1"
 ```
 
-下面只演示协议转换。节点、速度和转矩前馈都由调用方显式提供：
+也可以在同一工作区使用本地路径：
+
+```toml
+[dependencies]
+odrive-can-protocol = { path = "../odrive-can" }
+```
+
+Rust 中的 crate 名为 `odrive_can_protocol`。完整 API 见 [rustdoc](https://docs.rs/odrive-can-protocol)。
+
+## 快速开始
+
+下面的例子只做协议转换：节点号、帧收发、命令是否被设备执行及后续状态判断均由应用负责。
 
 ```rust
-use odrive_can::{FrameId, FramePayload, FrameRef};
-use odrive_can::fw_v0_5_1::{
+use odrive_can_protocol::fw_v0_5_1::{
     self as protocol, AxisState, Command, Message, NodeId, Query, Response,
 };
+use odrive_can_protocol::{FrameId, FramePayload, FrameRef};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let node = NodeId::new(1)?;
-    let tx = protocol::encode(node, Message::Command(Command::SetInputVel {
-        velocity: -2.5, // turn/s
-        torque_ff: 0.25, // N·m
-    }))?;
+    let tx = protocol::encode(
+        node,
+        Message::Command(Command::SetInputVel {
+            velocity: -2.5, // turn/s
+            torque_ff: 0.25, // N·m
+        }),
+    )?;
     assert_eq!(tx.id(), 0x02d);
-    assert_eq!(tx.dlc(), 8);
     assert_eq!(tx.data(), &[0x00, 0x00, 0x20, 0xc0, 0x00, 0x00, 0x80, 0x3e]);
 
     let query = protocol::encode(node, Message::Request(Query::EncoderEstimates))?;
     assert!(query.is_remote());
     assert_eq!(query.dlc(), 8);
-    assert!(query.data().is_empty()); // RTR 没有数据；DLC 表达请求长度
+    assert!(query.data().is_empty()); // RTR 无数据；DLC 表示请求长度
 
-    // 独立给定的收到字节；未知错误位和高位非零状态都必须保留。
     let bytes = [0x01, 0x00, 0x00, 0x80, 0x08, 0x00, 0x01, 0x00];
     let rx = FrameRef {
         id: FrameId::Standard(0x021),
         payload: FramePayload::Data(&bytes),
     };
-    assert_eq!(protocol::decode(node, rx)?, Some(Message::Response(
-        Response::Heartbeat {
+    assert_eq!(
+        protocol::decode(node, rx)?,
+        Some(Message::Response(Response::Heartbeat {
             axis_error: 0x8000_0001,
             axis_state: AxisState(0x0001_0008),
-        }
-    )));
-    // 完整值并不等于 ClosedLoopControl (8)。
-    assert_ne!(AxisState(0x0001_0008), AxisState(8));
+        }))
+    );
     Ok(())
 }
 ```
 
-可运行的完整版本见 [`examples/encode_decode.rs`](examples/encode_decode.rs)：
+仓库中可直接运行相同语义的示例：
 
 ```sh
 cargo run --example encode_decode
 ```
 
-更多接入方法见 [使用示例](examples/README.md)。
+更多驱动适配方式见 [examples](https://github.com/MRNIU/odrive-can/tree/main/examples)。
+
+## 协议 API 与边界
+
+当前实现位于 `odrive_can_protocol::fw_v0_5_1`，并在 crate 根重导出主要类型和 `encode`／`decode`。
+
+| API／类型 | 语义 |
+|---|---|
+| `NodeId::new(u32)` | 验证节点号为 `0..=63`，越界报错，不通过掩码截断。节点是 CAN 地址，不是轴索引。 |
+| `Command` | 主机写命令。状态、模式和范围是否被设备接受由应用与设备共同决定。 |
+| `Query` | 主机以 RTR 发出的读取请求。 |
+| `Response` | 轴的 Heartbeat 或读取回复；错误位、未知状态和原始浮点反馈均是有效协议数据。 |
+| `encode(node, message)` | 返回 `Result<EncodedFrame, EncodeError>`；成功只说明已完成协议编码。 |
+| `decode(node, frame)` | 返回 `Result<Option<Message>, DecodeError>`；不会收发帧或把消息和一次动作关联。 |
+
+`decode` 的三种结果：
+
+| 结果 | 含义 |
+|---|---|
+| `Ok(Some(message))` | 此节点的一条已知协议消息。非零设备错误仍在此分支，必须由应用处理。 |
+| `Ok(None)` | 其他节点，或当前基线未知／保留命令；不会读取其载荷来猜测版本。 |
+| `Err(...)` | 不支持的帧或无法满足此消息的格式合同，例如扩展 ID、CAN FD、帧形态或长度错误。 |
+
+标准 11-bit ID 为 `(node_id << 5) | command_id`。多字节字段均为 little-endian，`f32`
+为 IEEE 754 binary32。编码主机命令拒绝 NaN 和无穷；解码保留线上浮点位模式（包括非有限值）、
+完整 `u32` 轴状态及未知错误位。库不做单位换算、范围限幅、许可、停止、重试、心跳新鲜度或恢复。
+
+查询编码为 DLC 8 且没有数据的 RTR 帧；解码接受 DLC `0..=8` 的 RTR，因为该固件只检查
+RTR 形态。已知数据帧严格按表中实际长度校验。Heartbeat 不是某个写命令的 ACK，发送成功也
+不能证明设备执行或动作完成。
 
 ## 协议转换时序
-
-下图描述应用与库的交接。发送和接收由应用调用驱动完成；图中不规定控制顺序、超时或重试。
 
 ```mermaid
 sequenceDiagram
     participant App as 应用
-    participant Codec as odrive-can
+    participant Codec as odrive-can-protocol
     participant Driver as CAN 驱动
 
     App->>Codec: encode(node, message)
@@ -116,86 +144,117 @@ sequenceDiagram
     end
 ```
 
-## API、输入与输出
+## 版本支持
 
-协议 API 位于 `odrive_can::fw_v0_5_1`：
+本库面向 ODrive CANSimple，按固件版本组织协议 API，后续将逐步增加其他版本支持。
 
-| API／类型 | 作用 |
-|---|---|
-| `NodeId::new(u32)` | 验证 `0..=63`；越界报错，不通过掩码截断 |
-| `Command` | Master 写命令；请求轴状态覆盖协议值，不限定 Idle／ClosedLoop |
-| `Query` | Master RTR 读取命令 |
-| `Response` | Axis 数据，包括设备错误、未知状态和原始浮点反馈 |
-| `Message` | 区分命令、查询和回复的消息值 |
-| `encode(node, message)` | 得到固定大小 `EncodedFrame`，通过 `id/data/dlc/is_remote` 交给应用 |
-| `decode(node, FrameRef)` | 按显式节点过滤并解码；帧视图持有有效切片，零拷贝借用输入 |
+| 协议版本 | 模块 | 支持状态 |
+|---|---|---|
+| ODrive `fw-v0.5.1` | `fw_v0_5_1` | 已实现并核验全部有效消息，支持标准 Classic CAN |
+| 其他固件版本 | — | 尚未实现，欢迎按贡献指南补充支持 |
 
-标准 ID 为 `(node_id << 5) | command_id`；节点表示轴的 CAN 地址，而非轴索引。
-端序全部为 little-endian，浮点为 IEEE 754 binary32。
+这个基线完整实现 23 个有效命令号：14 个主机写命令、8 个 RTR 查询、Heartbeat 和 8 种
+查询回复。全部字段使用 little-endian；所有轴数据回复的实际 DLC 均为 8，即便其中只有
+前 4 字节有定义字段。新增版本必须先以其固定源码 revision 核对命令、方向、字段、单位和
+实际帧长度，再提供明确的版本 API 与独立测试；不得依据帧长度、USB 版本字符串或未知字段
+自动切换版本。
 
-- 速度单位 turn/s，转矩及转矩前馈单位 N·m，编码器位置单位 turn。
-- `SetInputPos` 的 `velocity_ff: i16` 和 `torque_ff: i16` 直接表示协议整数，步长分别为
-  `0.001 turn/s`、`0.001 N·m`；调用方决定舍入策略，库不执行浮点转整数或饱和。
-- Sensorless 位置单位 **rad**，速度仍为 turn/s；轨迹加／减速度单位 turn/s²。
-- 主机命令中的全部 `f32` 在编码时必须有限；正数、负数、零都可编码，不做物理范围限制。
-- 解码完整保留 `u32` 状态、所有错误位，以及线上浮点（包括 NaN／无穷）。
-  解码成功不等于传感器数据可用于控制。设备数据编码同样保留浮点位模式。
+当前基线只支持标准 Classic CAN：扩展 ID 与 CAN FD 显式报错。节点 63 是普通地址，不带
+后来版本可能具有的广播／发现语义。
 
-| 解码结果 | 意义 |
-|---|---|
-| `Ok(None)` | 其他标准节点或本版本未知／保留命令；不检查其载荷 |
-| `Err(...)` | 非法标准 ID、不支持的扩展 ID，或相关消息长度／帧形态／字段格式错误 |
-| `Ok(Some(message))` | 按此版本取得协议值；设备 error 非零也属于这里 |
+### `fw_v0_5_1` 完整消息表
 
-相关的 CAN FD、非查询 RTR、数据长度错误都报错；扩展 ID 一律显式不支持。
-对相关消息严格验证实际有效长度，不读取固定缓冲的补齐尾部。四字节字段的错误／Vbus
-回复在该固件中**实际 DLC 为 8**，库按 8 字节处理。详细校验顺序与错误字段见 rustdoc。
+`M` 表示主机，`A` 表示轴。字段从 byte 0 依次排列；长度是数据帧的实际长度，查询方向为
+`M RTR → A data`。
 
-**状态请求的固件限制：**文档定义 `u32`，本库完整编码 4 字节；官方回调却只读取低 16 位。
-因此不能把高位非零的请求理解成设备必定保留或拒绝该值。已知值与未知值的线上表达由
-`AxisState` 保留，具体状态是否受设备支持由应用判断。
+| ID | 消息 | 方向 | 字段／单位 | 长度 |
+|---|---|---|---|---:|
+| `0x01` | Heartbeat | A data | axis error `u32`；axis state `u32` | 8 |
+| `0x02` | Estop | M data | 无 | 0 |
+| `0x03` | Get Motor Error | RTR → A | error `u32`；尾部 4 字节 | 8 |
+| `0x04` | Get Encoder Error | RTR → A | error `u32`；尾部 4 字节 | 8 |
+| `0x05` | Get Sensorless Error | RTR → A | error `u32`；尾部 4 字节 | 8 |
+| `0x06` | Set Axis Node ID | M data | 新 node id `u32` | 4 |
+| `0x07` | Set Axis Requested State | M data | requested state `u32` | 4 |
+| `0x09` | Get Encoder Estimates | RTR → A | position `f32` turn；velocity `f32` turn/s | 8 |
+| `0x0A` | Get Encoder Count | RTR → A | shadow count `i32`；count in CPR `i32` | 8 |
+| `0x0B` | Set Controller Modes | M data | control mode `i32`；input mode `i32` | 8 |
+| `0x0C` | Set Input Pos | M data | position `f32` turn；velocity FF `i16 × 0.001` turn/s；torque FF `i16 × 0.001` N·m | 8 |
+| `0x0D` | Set Input Vel | M data | velocity `f32` turn/s；torque FF `f32` N·m | 8 |
+| `0x0E` | Set Input Torque | M data | torque `f32` N·m | 4 |
+| `0x0F` | Set Velocity Limit | M data | velocity limit `f32` turn/s | 4 |
+| `0x10` | Start Anticogging | M data | 无 | 0 |
+| `0x11` | Set Traj Vel Limit | M data | velocity limit `f32` turn/s | 4 |
+| `0x12` | Set Traj Accel Limits | M data | acceleration `f32`；deceleration `f32`，均 turn/s² | 8 |
+| `0x13` | Set Traj Inertia | M data | inertia `f32`；原始 controller 参数 | 4 |
+| `0x14` | Get IQ | RTR → A | Iq setpoint `f32` A；Iq measured `f32` A | 8 |
+| `0x15` | Get Sensorless Estimates | RTR → A | PLL position `f32` rad；velocity `f32` turn/s | 8 |
+| `0x16` | Reboot ODrive | M data | 无 | 0 |
+| `0x17` | Get Vbus Voltage | RTR → A | voltage `f32` V；尾部 4 字节 | 8 |
+| `0x18` | Clear Errors | M data | 无 | 0 |
 
-## 官方来源与 MKS
+`0x08 Set Axis Startup Config` 在该固件中未实现，对当前节点返回
+`DecodeError::UnsupportedCommand`；`0x00`、文档中的 `0x700` 与 `0x19..=0x1f` 没有该基线
+的 CANSimple 消息语义。CANopen `0x700` 不是 5-bit command，不能与节点号合成。标准 ID
+`0x700` 会按 node 56／command 0 处理，并不是一个可整体屏蔽的地址段。
 
-官方 tag `fw-v0.5.1` 固定 revision 为
+### 基线证据与实现差异
+
+官方 `fw-v0.5.1` tag 固定为 revision
 [`7831d795235e5ef8535e4b46621a0721b458ec8f`](https://github.com/odriverobotics/ODrive/tree/7831d795235e5ef8535e4b46621a0721b458ec8f)。
-已实际交叉读取对应文档、CANSimple 实现、帧定义及字段单位，不用 latest 文档替代基线。
+核对了该 revision 的[协议文档](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/docs/can-protocol.md)、[CANSimple 实现](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_simple.cpp)、[命令枚举](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_simple.hpp)、[帧字段辅助代码](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/can_helpers.hpp)、[Classic CAN 收发实现](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/communication/interface_can.cpp)
+和 [Sensorless 单位定义](https://github.com/odriverobotics/ODrive/blob/7831d795235e5ef8535e4b46621a0721b458ec8f/Firmware/MotorControl/sensorless_estimator.hpp)。
 
-MKS ODrive Mini `0.5.1-20250326` 发布源码包（厂家仓库 revision
-`e15782976ae93d42b1f0648ceec96503141a343b`）中的协议文档和 `can_simple.cpp` 与官方基线
-逐字节相同。Heartbeat、Set Axis Requested State、Set Input Vel 的标准 Classic CAN
-格式一致，同时保留上述低 16 位状态请求限制。
+| 证据发现 | 本库合同 |
+|---|---|
+| Heartbeat 是两个完整 `u32`。 | 保留完整状态和所有未知 error bits；只有精确值才可与已知状态常量比较。 |
+| 文档定义的状态请求字段是 `u32`，回调实际只读低 16 bit。 | 编码完整 4 字节，但高位非零的值不表示设备会按完整 `u32` 执行。 |
+| 三种错误回复和 Vbus 回复都实际发送 DLC 8。 | 后 4 字节由编码回复清零，解码忽略其值但要求实际 DLC 8。 |
+| 固件对某些接收帧的长度或 RTR 很宽松。 | 本库按表严格检查 0／4／8 字节及帧形态；这不是对设备拒绝行为的声明。 |
+| 部分 Get 行的文档方向不精确，Get Vbus 也缺查询星号。 | 以源码为准：由主机 RTR 发起，轴以数据帧回复。 |
+| Sensorless 发送的是 `pll_pos_`。 | Sensorless 位置为 rad，不沿用 Encoder Estimates 的 turn。 |
 
-这是指定发布源码的兼容证据，未确认具体设备刷入的二进制，也未做实板验证。下载入口、
-SHA-256、消息细节和参考项目差异见 [协议证据](docs/protocol.md)。
+<details>
+<summary>MKS ODrive Mini 的发布源码交叉核对</summary>
 
-## 软件验证
+核对的发布包为
+[ODriveMINI-fw-v0.5.1-20250326](https://github.com/makerbase-motor/MKS-ODrive/blob/e15782976ae93d42b1f0648ceec96503141a343b/Firmware/MKS%20ODrive%20MINI/ODriveMINI-fw-v0.5.1-20250326.rar)，
+厂家仓库 revision 为 `e15782976ae93d42b1f0648ceec96503141a343b`，RAR SHA-256 为
+`a8cbc2af68deccdadad150e20d8337cc7a1ae430f8ccb441625315e2f04d2430`。解压后下列文件与
+上述官方 revision 的同路径文件逐字节一致：
 
-最低 Rust 1.85（2024 Edition），CI 主检查使用 stable，另有 MSRV 库检查。没有 dependencies、
-dev-dependencies、build-dependencies 或 feature 开关；库仅使用 `core`，主机 example／测试
-可使用 `std`。本仓库不需要专用测试固件。
+| 文件 | SHA-256 |
+|---|---|
+| `docs/can-protocol.md` | `1d6dcd3798df071313a667bd2a076949d73fe40cb2c18c0f7644faaf6b658fb5` |
+| `Firmware/communication/can_simple.cpp` | `b2d0a8f78605fe3bc0e411bd3649bbf562d0db4eec39fd1dccc98998436741bd` |
+| `Firmware/communication/can_helpers.hpp` | `b171f27d478493a6ea714a20cd86bd8d625312f886f5a0f671044c4e38169c4b` |
 
-以下命令均在仓库目录执行：
+这只证明该发布源码包与基线的协议文件一致，不确认任何具体设备刷入的二进制，也不构成
+实板、总线或运动验证。它不能推及其他 MKS 版本、厂商修改版或未来版本。
+</details>
+
+只读参考项目
+[`raoz/odrive-messages` at `37990cb157f667cdd0ddb441f907066e4126fbef`](https://github.com/raoz/odrive-messages/tree/37990cb157f667cdd0ddb441f907066e4126fbef)
+属于更新协议：其中 `0x00` 是 GetVersion，`0x03` 是复合错误，`0x04/0x05` 是 SDO，`0x15`
+是温度，`0x17` 含母线电流，Heartbeat 布局也不同。因此仅借鉴纯协议层职责分离，不采用其
+wire 格式或代码。
+
+## 开发与贡献
+
+提交前可运行：
 
 ```sh
 cargo fmt --check
 cargo test --all-targets
 cargo test --doc
-cargo run --example encode_decode
 cargo clippy --all-targets -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
-cargo build --lib --target thumbv7em-none-eabihf
-cargo build --lib --target thumbv6m-none-eabi
-cargo tree --edges features
-cargo metadata --format-version 1
 cargo +1.85.0 check --lib
-cargo package --locked
 ```
 
-目标未安装时执行 `rustup target add thumbv7em-none-eabihf thumbv6m-none-eabi`。
-本地未提交改动的打包检查可追加 `--allow-dirty`；CI 使用干净 checkout。
-本地打包只检查包内容及重新构建，不上传。检查结果见 [验证记录](docs/validation.md)。
+贡献流程、协议变更要求和验证范围见 [CONTRIBUTING.md](https://github.com/MRNIU/odrive-can/blob/main/CONTRIBUTING.md)。协议变更必须以
+固定版本源码核对，并同步更新本 README 的版本支持和证据说明。
 
 ## License
 
-[MIT](https://github.com/MRNIU/odrive-can/blob/main/LICENSE)，保留原版权 `Copyright (c) 2026 Niu Zhihong`。
+本项目采用 [MIT License](https://github.com/MRNIU/odrive-can/blob/main/LICENSE)，保留原版权信息。

@@ -4,7 +4,7 @@
 //!
 //! 测试直接给定预期 ID、字段位置与端序，不以编解码自循环代替协议依据。
 
-use odrive_can::{
+use odrive_can_protocol::{
     AxisState, Command, DecodeError, EncodeError, FrameId, FramePayload, FrameRef, Message, NodeId,
     Query, Response, decode, encode,
 };

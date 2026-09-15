@@ -5,5 +5,5 @@
 version = 4
 
 [[package]]
-name = "odrive-can"
+name = "odrive-can-protocol"
 version = "0.1.0"

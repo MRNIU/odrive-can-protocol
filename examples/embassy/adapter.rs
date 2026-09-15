@@ -1,16 +1,16 @@
 // Copyright The odrive-can Contributors
 
-//! Embassy STM32 Classic CAN 帧与 `odrive_can` 帧视图之间的纯转换。
+//! Embassy STM32 Classic CAN 帧与 `odrive_can_protocol` 帧视图之间的纯转换。
 //!
 //! 本模块不持有外设，也不发送或接收 CAN。`to_embassy` 只将
-//! [`odrive_can::EncodedFrame`] 转为 Classic CAN `Frame`；`from_embassy`
+//! [`odrive_can_protocol::EncodedFrame`] 转为 Classic CAN `Frame`；`from_embassy`
 //! 借用输入帧，并对 Classic 数据帧只暴露 `Header::len()` 指定的有效字节。
 //! RTR 帧保留其 DLC 而不读取数据缓冲。FDF 标志优先于 RTR：即使缓冲不超过 8 字节，
 //! FDF 帧也会映射为 `FramePayload::Fd`，由协议层拒绝而不会被误作 Classic CAN。
 
 use embassy_stm32::can::{Frame, enums::FrameCreateError};
 use embedded_can::{Id, StandardId};
-use odrive_can::{EncodedFrame, FrameId, FramePayload, FrameRef};
+use odrive_can_protocol::{EncodedFrame, FrameId, FramePayload, FrameRef};
 
 /// 把协议编码器产生的 Classic 标准 CAN 帧转换为 Embassy 帧。
 ///
