@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! 使用独立字节向量验证 fw-v0.5.1 的命令、查询、回复和输入边界。
 //!

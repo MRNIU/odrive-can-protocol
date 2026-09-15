@@ -1,10 +1,10 @@
-<!-- Copyright The odrive-can Contributors -->
+<!-- Copyright The odrive-can-protocol Contributors -->
 <!-- 本文件说明问题反馈、协议贡献、软件验证和版本维护流程。 -->
 
 # 贡献指南
 
-欢迎通过 [Issue](https://github.com/MRNIU/odrive-can/issues) 报告问题或讨论改进，
-通过 [Pull Request](https://github.com/MRNIU/odrive-can/pulls) 提交变更。
+欢迎通过 [Issue](https://github.com/MRNIU/odrive-can-protocol/issues) 报告问题或讨论改进，
+通过 [Pull Request](https://github.com/MRNIU/odrive-can-protocol/pulls) 提交变更。
 小型修复可以直接提交 PR；新增固件支持或改变公共 API 时，建议先在 Issue 中说明使用需求和兼容性影响。
 
 ## 报告问题
@@ -19,7 +19,7 @@
 - 库只负责协议值与帧的转换；任务、重试、时序、单位换算和控制策略由应用负责。
 - 使用固定大小缓冲或借用切片，明确有效数据长度，保留未知状态值与错误位。
 - Rust 标识符使用英文；说明文档与 rustdoc 使用中文，API 文档写明单位、前提和返回语义。
-- 每个文件开头写明职责，并保留 `Copyright The odrive-can Contributors`，使用对应格式的合法注释。
+- 每个文件开头写明职责，并保留 `Copyright The odrive-can-protocol Contributors`，使用对应格式的合法注释。
 - 保留 [MIT 许可证](LICENSE) 的许可条款与原版权信息。
 
 ## 协议变更与版本支持
@@ -79,7 +79,8 @@ CI 执行格式、测试、文档、Clippy、两个 Cortex-M 目标构建、依�
 ## 提交 Pull Request
 
 PR 描述应说明具体问题、变更后的行为、兼容性影响，以及实际执行的验证命令和结果。
-保持改动聚焦，避免混入无关格式调整。对公共 API 或协议行为的变更，请更新 [CHANGELOG](CHANGELOG.md)。
+保持改动聚焦，避免混入无关格式调整。对公共 API 或协议行为的变更，请在 PR 中说明迁移方法，
+并由维护者整理到 GitHub Release 的发布说明。
 
 提交信息采用 Conventional Commits，例如 `fix: 保留 Heartbeat 状态高位`。
 使用 `git commit --signoff` 添加 DCO 签署，表示符合 [Developer Certificate of Origin](https://developercertificate.org/)。
@@ -88,8 +89,8 @@ AI 协作提交应保留适用的 `Co-authored-by` 署名。
 ## 版本与发布
 
 crate 版本与设备固件版本独立管理。维护者按 SemVer 发布；在 `0.x` 阶段，破坏兼容的 API
-变更提升次版本，兼容修复提升补丁版本。提高 MSRV 时需在变更记录中说明。
+变更提升次版本，兼容修复提升补丁版本。提高 MSRV 时需在发布说明中列明。
 
-发布前更新 Cargo 版本、lockfile 和变更记录，完成上述验证及 `cargo publish --locked --dry-run`。
+发布前更新 Cargo 版本、lockfile 并准备发布说明，完成上述验证及 `cargo publish --locked --dry-run`。
 维护者在配置好 crates.io 凭据的环境执行 `cargo publish --locked`，确认注册表中的版本、仓库链接
 和文档构建结果后，再创建对应的 Git tag 与 GitHub Release。不要将发布凭据写入仓库。

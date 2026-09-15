@@ -1,12 +1,12 @@
-<!-- Copyright The odrive-can Contributors -->
+<!-- Copyright The odrive-can-protocol Contributors -->
 <!-- 本文件介绍项目使用、协议支持、源码依据与贡献入口。 -->
 
 # odrive-can-protocol
 
-[![CI](https://github.com/MRNIU/odrive-can/actions/workflows/ci.yml/badge.svg)](https://github.com/MRNIU/odrive-can/actions/workflows/ci.yml)
+[![CI](https://github.com/MRNIU/odrive-can-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/MRNIU/odrive-can-protocol/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/odrive-can-protocol.svg)](https://crates.io/crates/odrive-can-protocol)
 [![docs.rs](https://docs.rs/odrive-can-protocol/badge.svg)](https://docs.rs/odrive-can-protocol)
-[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/MRNIU/odrive-can/blob/main/LICENSE)
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/MRNIU/odrive-can-protocol/blob/main/LICENSE)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85-blue.svg)](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/)
 
 `odrive-can-protocol` 是硬件无关的 ODrive CANSimple 编解码库。它把显式协议值转换为 Classic CAN
@@ -26,7 +26,7 @@ odrive-can-protocol = "0.1"
 
 ```toml
 [dependencies]
-odrive-can-protocol = { path = "../odrive-can" }
+odrive-can-protocol = { path = "../odrive-can-protocol" }
 ```
 
 Rust 中的 crate 名为 `odrive_can_protocol`。完整 API 见 [rustdoc](https://docs.rs/odrive-can-protocol)。
@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 cargo run --example encode_decode
 ```
 
-更多驱动适配方式见 [examples](https://github.com/MRNIU/odrive-can/tree/main/examples)。
+更多驱动适配方式见 [examples](https://github.com/MRNIU/odrive-can-protocol/tree/main/examples)。
 
 ## 协议 API 与边界
 
@@ -252,9 +252,9 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 cargo +1.85.0 check --lib
 ```
 
-贡献流程、协议变更要求和验证范围见 [CONTRIBUTING.md](https://github.com/MRNIU/odrive-can/blob/main/CONTRIBUTING.md)。协议变更必须以
+贡献流程、协议变更要求和验证范围见 [CONTRIBUTING.md](https://github.com/MRNIU/odrive-can-protocol/blob/main/CONTRIBUTING.md)。协议变更必须以
 固定版本源码核对，并同步更新本 README 的版本支持和证据说明。
 
 ## License
 
-本项目采用 [MIT License](https://github.com/MRNIU/odrive-can/blob/main/LICENSE)，保留原版权信息。
+本项目采用 [MIT License](https://github.com/MRNIU/odrive-can-protocol/blob/main/LICENSE)，保留原版权信息。

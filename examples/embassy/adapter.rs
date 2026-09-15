@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! Embassy STM32 Classic CAN 帧与 `odrive_can_protocol` 帧视图之间的纯转换。
 //!

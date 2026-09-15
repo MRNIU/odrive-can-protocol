@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! 与 CAN 驱动解耦的帧类型，显式保存 ID 形态、有效载荷与 RTR 信息。
 //!

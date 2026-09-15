@@ -1,4 +1,4 @@
-# Copyright The odrive-can Contributors
+# Copyright The odrive-can-protocol Contributors
 # 定义通用协议库的包元数据、发布文件范围和编译检查，保持零依赖。
 
 [package]
@@ -7,14 +7,14 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Hardware-independent, no_std ODrive CANSimple protocol codec with zero allocation"
-repository = "https://github.com/MRNIU/odrive-can"
-homepage = "https://github.com/MRNIU/odrive-can"
+repository = "https://github.com/MRNIU/odrive-can-protocol"
+homepage = "https://github.com/MRNIU/odrive-can-protocol"
 documentation = "https://docs.rs/odrive-can-protocol"
 license = "MIT"
 readme = "README.md"
 keywords = ["odrive", "can", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std", "encoding"]
-include = ["src/**", "tests/**", "examples/**", "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
+include = ["src/**", "tests/**", "examples/**", "README.md", "CONTRIBUTING.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 
 [lints.rust]
 unsafe_code = "forbid"

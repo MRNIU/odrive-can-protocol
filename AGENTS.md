@@ -1,4 +1,4 @@
-<!-- Copyright The odrive-can Contributors -->
+<!-- Copyright The odrive-can-protocol Contributors -->
 
 # 本仓库开发约束
 
@@ -10,6 +10,6 @@
 - 不添加外设访问、任务、重试、时序、单位换算、限幅或业务许可／恢复逻辑。
 - 文档使用中文；精确 API 前提、单位和返回语义放在 rustdoc。
 - 测试使用独立给定的协议字节；变更后运行 README 中相应软件检查。
-- 文件开头保留 `Copyright The odrive-can Contributors`，并说明文件职责；注释采用各格式的合法语法。
+- 文件开头保留 `Copyright The odrive-can-protocol Contributors`，并说明文件职责；注释采用各格式的合法语法。
 - 保留 MIT LICENSE 的原许可条款和版权信息。
 - 通用文档不包含本地开发环境或特定消费方描述；具体框架的接入方法放在 `examples/`。

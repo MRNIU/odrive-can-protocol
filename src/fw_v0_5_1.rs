@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! ODrive `fw-v0.5.1` CANSimple 协议。
 //!

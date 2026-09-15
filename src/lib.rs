@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! ODrive CANSimple 协议库入口，提供版本明确的编解码 API 与硬件无关帧类型。
 //!

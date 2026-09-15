@@ -1,4 +1,4 @@
-// Copyright The odrive-can Contributors
+// Copyright The odrive-can-protocol Contributors
 
 //! 演示速度命令、RTR 查询和 Heartbeat 的协议转换，不连接设备。
 //!

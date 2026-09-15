@@ -1,4 +1,4 @@
-<!-- Copyright The odrive-can Contributors -->
+<!-- Copyright The odrive-can-protocol Contributors -->
 
 # 示例
 
@@ -18,11 +18,11 @@ cargo run --example encode_decode
 
 [`embassy/adapter.rs`](embassy/adapter.rs) 是可复制到消费方应用的 Rust 模块，不是本 crate 的
 独立 Cargo example。将该文件复制到应用的 `src/` 目录后，应用可按自己的模块布局引用它；
-例如放为 `src/odrive_can_adapter.rs`：
+例如放为 `src/odrive_can_protocol_adapter.rs`：
 
 ```rust
-#[path = "odrive_can_adapter.rs"]
-mod odrive_can_adapter;
+#[path = "odrive_can_protocol_adapter.rs"]
+mod odrive_can_protocol_adapter;
 ```
 
 应用的 `Cargo.toml` 需要自行声明 HAL 依赖。以下为 STM32H723 的示例，

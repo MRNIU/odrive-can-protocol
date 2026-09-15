@@ -1,4 +1,4 @@
-# Copyright The odrive-can Contributors
+# Copyright The odrive-can-protocol Contributors
 # 检查格式、协议测试、文档、无操作系统目标、依赖和本地打包，不执行发布。
 
 name: CI
@@ -31,10 +31,10 @@ jobs:
       - name: Check dependencies and features
         run: |
           cargo tree --locked --edges features
-          cargo metadata --locked --format-version 1 > /tmp/odrive-can-metadata.json
+          cargo metadata --locked --format-version 1 > /tmp/odrive-can-protocol-metadata.json
           python3 - <<'PY'
           import json
-          with open('/tmp/odrive-can-metadata.json') as source:
+          with open('/tmp/odrive-can-protocol-metadata.json') as source:
               metadata = json.load(source)
           assert len(metadata['packages']) == 1, 'expected zero dependencies'
           package = metadata['packages'][0]
